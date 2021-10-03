@@ -5,8 +5,8 @@
       MessageBox.Show("Domain name cannot be blank", "DNS Black List Plug-In", MessageBoxButtons.OK, MessageBoxIcon.Error)
       Return False
     End If
-    Dim d As JHSoftware.SimpleDNS.Plugin.DomainName
-    If Not JHSoftware.SimpleDNS.Plugin.DomainName.TryParse(txtDomain.Text.Trim, d) Then
+    Dim d As JHSoftware.SimpleDNS.DomName
+    If Not JHSoftware.SimpleDNS.DomName.TryParse(txtDomain.Text.Trim, d) Then
       MessageBox.Show("Invalid domain name", "DNS Black List Plug-In", MessageBoxButtons.OK, MessageBoxIcon.Error)
       Return False
     End If
@@ -50,7 +50,7 @@
 
   Public Overrides Function SaveData() As String
     Dim cfg As New blConfig
-    cfg.Domain = JHSoftware.SimpleDNS.Plugin.DomainName.Parse(txtDomain.Text.Trim)
+    cfg.Domain = JHSoftware.SimpleDNS.DomName.Parse(txtDomain.Text.Trim)
     cfg.DataFile = txtDataFile.Text.Trim
     cfg.Monitor = chkMonitor.Checked
     cfg.TTL = txtTTL.Value

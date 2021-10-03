@@ -1,4 +1,6 @@
 ﻿Imports JHSoftware.SimpleDNS.Plugin
+Imports JHSoftware.SimpleDNS
+Imports System.Threading.Tasks
 
 Public Class BlackListPlugIn
   Implements IGetHostPlugIn
@@ -20,15 +22,15 @@ Public Class BlackListPlugIn
 #End Region
 
 #Region "Not Implmented"
-  Public Sub LookupReverse(ByVal req As IDNSRequest, ByRef resultName As JHSoftware.SimpleDNS.Plugin.DomainName, ByRef resultTTL As Integer) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LookupReverse
-    Throw New NotImplementedException
-  End Sub
-
   Public Sub LoadState(ByVal stateXML As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadState
   End Sub
 
   Public Function SaveState() As String Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.SaveState
     Return ""
+  End Function
+
+  Public Function LookupReverse(ip As SdnsIP, req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of DomName)) Implements IGetHostPlugIn.LookupReverse
+    Return Task.FromResult(Of IGetHostPlugIn.Result(Of DomName))(Nothing)
   End Function
 #End Region
 
@@ -36,17 +38,7 @@ Public Class BlackListPlugIn
     With GetPlugInTypeInfo
       .Name = "DNS Blacklist"
       .Description = "Provides data from an IP based DNS blacklist"
-      .InfoURL = "http://www.simpledns.com/kb.aspx?kbid=1241"
-      .ConfigFile = False
-      .MultiThreaded = False
-    End With
-  End Function
-
-  Public Function GetDNSAskAbout() As JHSoftware.SimpleDNS.Plugin.DNSAskAboutGH Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.GetDNSAskAbout
-    With GetDNSAskAbout
-      .Domain = DomainName.Parse("*") & config.Domain
-      .ForwardIPv4 = True
-      .TXT = True
+      .InfoURL = "https://simpledns.plus/kb/170/dns-blacklist-dnsbl-rbl-plug-in"
     End With
   End Function
 
@@ -67,37 +59,39 @@ Public Class BlackListPlugIn
     End If
   End Function
 
-  Sub LoadConfig(ByVal config As String, ByVal instanceID As Guid, ByVal dataPath As String, ByRef maxThreads As Integer) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadConfig
+  Sub LoadConfig(ByVal config As String, ByVal instanceID As Guid, ByVal dataPath As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadConfig
     Me.config.ConfigXML = config
     ListDomSegCt = Me.config.Domain.SegmentCount + 4
   End Sub
 
-  Public Sub Lookup(ByVal req As IDNSRequest, ByRef resultIP As IPAddress, ByRef resultTTL As Integer) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.Lookup
-    resultIP = Nothing
-    If req.QNameIP Is Nothing Then Exit Sub
-    If req.QNameIP.IPVersion <> 4 Then Exit Sub
+  Public Function Lookup(req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of SdnsIP)) Implements IGetHostPlugIn.Lookup
+    Return Task.FromResult(Lookup2(req))
+  End Function
+  Public Function Lookup2(req As IDNSRequest) As IGetHostPlugIn.Result(Of SdnsIP)
+    If Not req.QName.EndsWith(config.Domain) Then Return Nothing
+    If req.QNameIP Is Nothing Then Return Nothing
+    If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
-    If Not TryFindIPDataSet(DirectCast(req.QNameIP, IPAddressV4).Data, ds) Then Exit Sub
-    resultIP = New IPAddressV4(ds.ValueA)
-    resultTTL = config.TTL
-  End Sub
+    If Not TryFindIPDataSet(DirectCast(req.QNameIP, SdnsIPv4).Data, ds) Then Return Nothing
+    Return New IGetHostPlugIn.Result(Of SdnsIP) With {.Value = New SdnsIPv4(ds.ValueA), .TTL = config.TTL}
+  End Function
 
-  Public Sub LookupTXT(ByVal req As IDNSRequest, ByRef resultText As String, ByRef resultTTL As Integer) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LookupTXT
-    resultText = Nothing
-    If req.QNameIP Is Nothing Then Exit Sub
-    If req.QNameIP.IPVersion <> 4 Then Exit Sub
+  Public Function LookupTXT(req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of String)) Implements IGetHostPlugIn.LookupTXT
+    Return Task.FromResult(LookupTXT2(req))
+  End Function
+  Public Function LookupTXT2(req As IDNSRequest) As IGetHostPlugIn.Result(Of String)
+    If Not req.QName.EndsWith(config.Domain) Then Return Nothing
+    If req.QNameIP Is Nothing Then Return Nothing
+    If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
-    If Not TryFindIPDataSet(DirectCast(req.QNameIP, IPAddressV4).Data, ds) Then Exit Sub
-    If ds.ValueTXT.Length = 0 Then resultText = Nothing : Exit Sub
+    If Not TryFindIPDataSet(DirectCast(req.QNameIP, SdnsIPv4).Data, ds) Then Return Nothing
+    If ds.ValueTXT.Length = 0 Then Return Nothing
     Dim x = System.Text.Encoding.ASCII.GetString(ds.ValueTXT)
-
     Dim p = 0
     Do
       p = x.IndexOf("$", p)
       If p < 0 Then
-        resultText = If(x.Length > 255, x.Substring(0, 255), x)
-        resultTTL = config.TTL
-        Exit Sub
+        Return New IGetHostPlugIn.Result(Of String) With {.Value = If(x.Length > 255, x.Substring(0, 255), x), .TTL = config.TTL}
       End If
       If p < x.Length - 1 AndAlso x(p + 1) = "$" Then
         x = x.Substring(0, p) & x.Substring(p + 1)
@@ -106,7 +100,7 @@ Public Class BlackListPlugIn
         x = x.Substring(0, p) & req.QNameIP.ToString & x.Substring(p + 1)
       End If
     Loop
-  End Sub
+  End Function
 
   Private Function TryFindIPDataSet(ByVal IP As UInt32, ByRef ds As blDataSet) As Boolean
     SyncLock config
@@ -242,11 +236,12 @@ Public Class BlackListPlugIn
     End SyncLock
   End Sub
 
-  Public Function ListsIPAddress(ByVal ip As JHSoftware.SimpleDNS.Plugin.IPAddress) As Boolean Implements JHSoftware.SimpleDNS.Plugin.IListsIPAddress.ListsIPAddress
-    If ip.IPVersion <> 4 Then Return False
+  Public Function ListsIPAddress(ip As SdnsIP) As Task(Of Boolean) Implements IListsIPAddress.ListsIPAddress
+    If ip.IPVersion <> 4 Then Return Task.FromResult(False)
     Dim ds As blDataSet = Nothing
-    Return TryFindIPDataSet(DirectCast(ip, IPAddressV4).Data, ds)
+    Return Task.FromResult(TryFindIPDataSet(DirectCast(ip, SdnsIPv4).Data, ds))
   End Function
+
 End Class
 
 Friend Structure blDataSet

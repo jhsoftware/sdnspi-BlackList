@@ -1,5 +1,5 @@
 ﻿Friend Class blConfig
-  Friend Domain As JHSoftware.SimpleDNS.Plugin.DomainName
+  Friend Domain As JHSoftware.SimpleDNS.DomName
   Friend DataFile As String
   Friend Monitor As Boolean
   Friend TTL As Integer
@@ -28,7 +28,7 @@
         For Each attr As Xml.XmlAttribute In DirectCast(node, Xml.XmlElement).Attributes
           Select Case attr.Name.ToLowerInvariant
             Case "domain"
-              Domain = JHSoftware.SimpleDNS.Plugin.DomainName.Parse(attr.Value)
+              Domain = JHSoftware.SimpleDNS.DomName.Parse(attr.Value)
             Case "datafile"
               DataFile = attr.Value
             Case "monitor"
