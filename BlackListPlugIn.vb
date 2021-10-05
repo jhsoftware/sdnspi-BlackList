@@ -15,11 +15,7 @@ Public Class BlackListPlugIn
   Private WithEvents fMon As System.IO.FileSystemWatcher
   Private LastReload As DateTime
 
-#Region "events"
-  Public Event LogLine(ByVal text As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LogLine
-  Public Event AsyncError(ByVal ex As System.Exception) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.AsyncError
-  Public Event SaveConfig(ByVal config As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.SaveConfig
-#End Region
+  Public Property Host As IHost Implements IPlugInBase.Host
 
 #Region "Not Implmented"
   Public Sub LoadState(ByVal stateXML As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadState
@@ -32,6 +28,11 @@ Public Class BlackListPlugIn
   Public Function LookupReverse(ip As SdnsIP, req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of DomName)) Implements IGetHostPlugIn.LookupReverse
     Return Task.FromResult(Of IGetHostPlugIn.Result(Of DomName))(Nothing)
   End Function
+
+  Public Function Signal(code As Integer, data As Object) As Task(Of Object) Implements IPlugInBase.Signal
+    Return Task.FromResult(Of Object)(Nothing)
+  End Function
+
 #End Region
 
   Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetPlugInTypeInfo
@@ -117,7 +118,7 @@ Public Class BlackListPlugIn
     End SyncLock
   End Function
 
-  Public Sub StartService() Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.StartService
+  Private Function IPlugInBase_StartService() As Task Implements IPlugInBase.StartService
     ReDim DataSets(-1)
     ReDim ListItems(-1)
     LoadDataFile()
@@ -129,7 +130,8 @@ Public Class BlackListPlugIn
       fMon.NotifyFilter = IO.NotifyFilters.LastWrite
       fMon.EnableRaisingEvents = True
     End If
-  End Sub
+    Return Task.CompletedTask
+  End Function
 
   Private Sub LoadDataFile()
     LastReload = DateTime.UtcNow
@@ -227,11 +229,11 @@ Public Class BlackListPlugIn
     SyncLock config
       Try
         LoadDataFile()
-        RaiseEvent LogLine("Data file reloaded")
+        Host.LogLine("Data file reloaded")
       Catch ex As Exception
         ReDim DataSets(-1)
         ReDim ListItems(-1)
-        RaiseEvent LogLine("Error reloading data file: " & ex.Message)
+        Host.LogLine("Error reloading data file: " & ex.Message)
       End Try
     End SyncLock
   End Sub
