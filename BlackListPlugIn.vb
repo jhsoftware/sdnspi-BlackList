@@ -3,8 +3,10 @@ Imports JHSoftware.SimpleDNS
 Imports System.Threading.Tasks
 
 Public Class BlackListPlugIn
-  Implements IGetHostPlugIn
+  Implements ILookupHost
+  Implements ILookupTXT
   Implements IListsIPAddress
+  Implements IOptionsUI
 
   Private DataSets(-1) As blDataSet
   Private ListItems(-1) As blItem
@@ -18,19 +20,11 @@ Public Class BlackListPlugIn
   Public Property Host As IHost Implements IPlugInBase.Host
 
 #Region "Not Implmented"
-  Public Sub LoadState(ByVal stateXML As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadState
+  Public Sub LoadState(ByVal stateXML As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadState
   End Sub
 
-  Public Function SaveState() As String Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.SaveState
+  Public Function SaveState() As String Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.SaveState
     Return ""
-  End Function
-
-  Public Function LookupReverse(ip As SdnsIP, req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of DomName)) Implements IGetHostPlugIn.LookupReverse
-    Return Task.FromResult(Of IGetHostPlugIn.Result(Of DomName))(Nothing)
-  End Function
-
-  Public Function Signal(code As Integer, data As Object) As Task(Of Object) Implements IPlugInBase.Signal
-    Return Task.FromResult(Of Object)(Nothing)
   End Function
 
 #End Region
@@ -43,11 +37,11 @@ Public Class BlackListPlugIn
     End With
   End Function
 
-  Public Function GetOptionsUI(ByVal instanceID As Guid, ByVal dataPath As String) As JHSoftware.SimpleDNS.Plugin.OptionsUI Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.GetOptionsUI
+  Public Function GetOptionsUI(ByVal instanceID As Guid, ByVal dataPath As String) As JHSoftware.SimpleDNS.Plugin.OptionsUI Implements JHSoftware.SimpleDNS.Plugin.IOptionsUI.GetOptionsUI
     Return New OptionsUI
   End Function
 
-  Public Function InstanceConflict(ByVal configXML1 As String, ByVal configXML2 As String, ByRef errorMsg As String) As Boolean Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.InstanceConflict
+  Public Function InstanceConflict(ByVal configXML1 As String, ByVal configXML2 As String, ByRef errorMsg As String) As Boolean Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.InstanceConflict
     Dim cfg1 As New blConfig
     cfg1.ConfigXML = configXML1
     Dim cfg2 As New blConfig
@@ -60,28 +54,28 @@ Public Class BlackListPlugIn
     End If
   End Function
 
-  Sub LoadConfig(ByVal config As String, ByVal instanceID As Guid, ByVal dataPath As String) Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.LoadConfig
+  Sub LoadConfig(ByVal config As String, ByVal instanceID As Guid, ByVal dataPath As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadConfig
     Me.config.ConfigXML = config
     ListDomSegCt = Me.config.Domain.SegmentCount + 4
   End Sub
 
-  Public Function Lookup(req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of SdnsIP)) Implements IGetHostPlugIn.Lookup
-    Return Task.FromResult(Lookup2(req))
+  Public Function LookupHost(name As DomName, ipv6 As Boolean, req As IDNSRequest) As Task(Of LookupResult(Of SdnsIP)) Implements ILookupHost.LookupHost
+    Return Task.FromResult(Lookup2(name, ipv6, req))
   End Function
-  Public Function Lookup2(req As IDNSRequest) As IGetHostPlugIn.Result(Of SdnsIP)
-    If Not req.QName.EndsWith(config.Domain) Then Return Nothing
+  Public Function Lookup2(name As DomName, ipv6 As Boolean, req As IDNSRequest) As LookupResult(Of SdnsIP)
+    If Not name.EndsWith(config.Domain) Then Return Nothing
     If req.QNameIP Is Nothing Then Return Nothing
     If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
     If Not TryFindIPDataSet(DirectCast(req.QNameIP, SdnsIPv4).Data, ds) Then Return Nothing
-    Return New IGetHostPlugIn.Result(Of SdnsIP) With {.Value = New SdnsIPv4(ds.ValueA), .TTL = config.TTL}
+    Return New LookupResult(Of SdnsIP) With {.Value = New SdnsIPv4(ds.ValueA), .TTL = config.TTL}
   End Function
 
-  Public Function LookupTXT(req As IDNSRequest) As Task(Of IGetHostPlugIn.Result(Of String)) Implements IGetHostPlugIn.LookupTXT
-    Return Task.FromResult(LookupTXT2(req))
+  Public Function LookupTXT(name As DomName, req As IDNSRequest) As Task(Of LookupResult(Of String)) Implements ILookupTXT.LookupTXT
+    Return Task.FromResult(LookupTXT2(name, req))
   End Function
-  Public Function LookupTXT2(req As IDNSRequest) As IGetHostPlugIn.Result(Of String)
-    If Not req.QName.EndsWith(config.Domain) Then Return Nothing
+  Public Function LookupTXT2(name As DomName, req As IDNSRequest) As LookupResult(Of String)
+    If Not name.EndsWith(config.Domain) Then Return Nothing
     If req.QNameIP Is Nothing Then Return Nothing
     If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
@@ -92,7 +86,7 @@ Public Class BlackListPlugIn
     Do
       p = x.IndexOf("$", p)
       If p < 0 Then
-        Return New IGetHostPlugIn.Result(Of String) With {.Value = If(x.Length > 255, x.Substring(0, 255), x), .TTL = config.TTL}
+        Return New LookupResult(Of String) With {.Value = If(x.Length > 255, x.Substring(0, 255), x), .TTL = config.TTL}
       End If
       If p < x.Length - 1 AndAlso x(p + 1) = "$" Then
         x = x.Substring(0, p) & x.Substring(p + 1)
@@ -214,7 +208,7 @@ Public Class BlackListPlugIn
     Loop
   End Function
 
-  Public Sub StopService() Implements JHSoftware.SimpleDNS.Plugin.IGetHostPlugIn.StopService
+  Public Sub StopService() Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.StopService
     DataSets = Nothing
     ListItems = Nothing
     If fMon IsNot Nothing Then
