@@ -29,11 +29,11 @@ Public Class BlackListPlugIn
 
 #End Region
 
-  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetPlugInTypeInfo
+  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetTypeInfo
     With GetPlugInTypeInfo
       .Name = "DNS Blacklist"
       .Description = "Provides data from an IP based DNS blacklist"
-      .InfoURL = "https://simpledns.plus/kb/170/dns-blacklist-dnsbl-rbl-plug-in"
+      .InfoURL = "https://simpledns.plus/plugin-dnsbl"
     End With
   End Function
 
@@ -59,10 +59,10 @@ Public Class BlackListPlugIn
     ListDomSegCt = Me.config.Domain.SegmentCount + 4
   End Sub
 
-  Public Function LookupHost(name As DomName, ipv6 As Boolean, req As IDNSRequest) As Task(Of LookupResult(Of SdnsIP)) Implements ILookupHost.LookupHost
+  Public Function LookupHost(name As DomName, ipv6 As Boolean, req As IRequestContext) As Task(Of LookupResult(Of SdnsIP)) Implements ILookupHost.LookupHost
     Return Task.FromResult(Lookup2(name, ipv6, req))
   End Function
-  Public Function Lookup2(name As DomName, ipv6 As Boolean, req As IDNSRequest) As LookupResult(Of SdnsIP)
+  Public Function Lookup2(name As DomName, ipv6 As Boolean, req As IRequestContext) As LookupResult(Of SdnsIP)
     If Not name.EndsWith(config.Domain) Then Return Nothing
     If req.QNameIP Is Nothing Then Return Nothing
     If Not req.QNameIP.IsIPv4 Then Return Nothing
@@ -71,10 +71,10 @@ Public Class BlackListPlugIn
     Return New LookupResult(Of SdnsIP) With {.Value = New SdnsIPv4(ds.ValueA), .TTL = config.TTL}
   End Function
 
-  Public Function LookupTXT(name As DomName, req As IDNSRequest) As Task(Of LookupResult(Of String)) Implements ILookupTXT.LookupTXT
+  Public Function LookupTXT(name As DomName, req As IRequestContext) As Task(Of LookupResult(Of String)) Implements ILookupTXT.LookupTXT
     Return Task.FromResult(LookupTXT2(name, req))
   End Function
-  Public Function LookupTXT2(name As DomName, req As IDNSRequest) As LookupResult(Of String)
+  Public Function LookupTXT2(name As DomName, req As IRequestContext) As LookupResult(Of String)
     If Not name.EndsWith(config.Domain) Then Return Nothing
     If req.QNameIP Is Nothing Then Return Nothing
     If Not req.QNameIP.IsIPv4 Then Return Nothing
