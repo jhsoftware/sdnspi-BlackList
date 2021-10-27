@@ -19,17 +19,7 @@ Public Class BlackListPlugIn
 
   Public Property Host As IHost Implements IPlugInBase.Host
 
-#Region "Not Implmented"
-  Public Sub LoadState(ByVal stateXML As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadState
-  End Sub
-
-  Public Function SaveState() As String Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.SaveState
-    Return ""
-  End Function
-
-#End Region
-
-  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetTypeInfo
+  Public Function GetPlugInTypeInfo() As TypeInfo Implements IPlugInBase.GetTypeInfo
     With GetPlugInTypeInfo
       .Name = "DNS Blacklist"
       .Description = "Provides data from an IP based DNS blacklist"
