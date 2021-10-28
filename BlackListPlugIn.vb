@@ -23,7 +23,7 @@ Public Class BlackListPlugIn
     With GetPlugInTypeInfo
       .Name = "DNS Blacklist"
       .Description = "Provides data from an IP based DNS blacklist"
-      .InfoURL = "https://simpledns.plus/plugin-dnsbl"
+      .InfoURL = "https://simpledns.plus/plugin-blacklist"
     End With
   End Function
 
