@@ -53,9 +53,9 @@ Public Class BlackListPlugIn
     Return Task.FromResult(Lookup2(name, ipv6, req))
   End Function
   Public Function Lookup2(name As DomName, ipv6 As Boolean, req As IRequestContext) As LookupResult(Of SdnsIP)
+    If Not ipv6 Then Return Nothing
+    If req.QNameIP Is Nothing OrElse Not req.QNameIP.IsIPv4 Then Return Nothing
     If Not name.EndsWith(config.Domain) Then Return Nothing
-    If req.QNameIP Is Nothing Then Return Nothing
-    If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
     If Not TryFindIPDataSet(DirectCast(req.QNameIP, SdnsIPv4).Data, ds) Then Return Nothing
     Return New LookupResult(Of SdnsIP) With {.Value = New SdnsIPv4(ds.ValueA), .TTL = config.TTL}
@@ -65,9 +65,8 @@ Public Class BlackListPlugIn
     Return Task.FromResult(LookupTXT2(name, req))
   End Function
   Public Function LookupTXT2(name As DomName, req As IRequestContext) As LookupResult(Of String)
+    If req.QNameIP Is Nothing OrElse Not req.QNameIP.IsIPv4 Then Return Nothing
     If Not name.EndsWith(config.Domain) Then Return Nothing
-    If req.QNameIP Is Nothing Then Return Nothing
-    If Not req.QNameIP.IsIPv4 Then Return Nothing
     Dim ds As blDataSet = Nothing
     If Not TryFindIPDataSet(DirectCast(req.QNameIP, SdnsIPv4).Data, ds) Then Return Nothing
     If ds.ValueTXT.Length = 0 Then Return Nothing
