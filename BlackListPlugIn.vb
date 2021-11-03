@@ -53,7 +53,7 @@ Public Class BlackListPlugIn
     Return Task.FromResult(Lookup2(name, ipv6, req))
   End Function
   Public Function Lookup2(name As DomName, ipv6 As Boolean, req As IRequestContext) As LookupResult(Of SdnsIP)
-    If Not ipv6 Then Return Nothing
+    If ipv6 Then Return Nothing
     If req.QNameIP Is Nothing OrElse Not req.QNameIP.IsIPv4 Then Return Nothing
     If Not name.EndsWith(config.Domain) Then Return Nothing
     Dim ds As blDataSet = Nothing
